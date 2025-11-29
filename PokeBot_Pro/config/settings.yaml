@@ -1,0 +1,51 @@
+bot:
+  name: "PokeBot Pro Unified"
+  enabled: true
+  debug_mode: true
+
+screen:
+  capture_method: "mss"
+  fps: 10
+
+# Caminhos (Ajuste se necessário)
+assets:
+  templates_dir: "assets/templates/"
+  shiny_image: "shiny.png"
+  goto_image: "goto.png"
+
+ocr:
+  # Ajuste para o seu caminho real
+  tesseract_path: "C:/Program Files/Tesseract-OCR/tesseract.exe"
+  use_easyocr: false # Tesseract com filtro de cor é mais rápido para jogos
+
+battle:
+  auto_battle: true
+  action_cooldown: 2.5
+
+# COORDENADAS EXATAS (Importadas do seu mapeamento)
+rois:
+  # HUD de Batalha
+  enemy_name: [35, 7, 110, 46]      # [x, y, w, h] ou [x1, y1, x2, y2]
+  enemy_level: [370, 13, 385, 40]
+  enemy_hp_bar: [83, 49, 383, 83]   # Para detecção de cor verde
+  
+  player_name: [1526, 986, 1613, 1023]
+  player_hp_text: [1637, 1028, 1819, 1059] # Para OCR dos números
+  
+  # Botões de Ação
+  btn_fight: [849, 901, 1065, 970]
+  btn_bag: [871, 984, 1030, 1039]
+  btn_pokemon: [697, 983, 858, 1038]
+  btn_run: [1049, 1010, 1213, 1073]
+
+  # Slots de Ataque (Texto)
+  moves:
+    slot_1: [661, 781, 912, 856]
+    slot_2: [1011, 785, 1230, 846]
+    slot_3: [687, 894, 906, 960]
+    slot_4: [1010, 895, 1232, 960]
+
+  # HUD de Equipe (Exploração)
+  team_hud:
+    container: [1636, 1015, 1893, 1034] # Área aproximada da lista
+    slot_height: 30
