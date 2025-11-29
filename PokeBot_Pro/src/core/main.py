@@ -26,7 +26,7 @@ def main():
     screen = ScreenCapture()
     ocr = OCREngine(config['ocr']['tesseract_path'])
     detector = GameStateDetector(screen, ocr, config)
-    input_sim = InputSimulator()
+    input_sim = InputSimulator(config)
     db = PokemonDatabase()
     team_mgr = TeamManager()
     strategy = BattleStrategy(db, team_mgr)

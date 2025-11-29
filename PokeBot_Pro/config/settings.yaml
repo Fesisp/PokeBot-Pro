@@ -7,11 +7,32 @@ screen:
   capture_method: "mss"
   fps: 10
 
+input:
+  mouse_move_duration: 0.25  # segundos para o movimento suave do mouse
+
 # Caminhos (Ajuste se necessário)
 assets:
   templates_dir: "assets/templates/"
   shiny_image: "shiny.png"
   goto_image: "goto.png"
+  talk_image: "talk.png"
+  fight_image: "fight.png"   # template do botão FIGHT
+  bag_image: "items.png"       # template do botão BAG
+  pokemon_image: "pokemon.png" # template do botão POKÉMON
+  run_image: "run.png"       # template do botão RUN
+
+# Detecção: thresholds para template matching
+detection:
+  talk_threshold: 0.8
+  shiny_threshold: 0.6
+  goto_threshold: 0.7
+  battle_button_threshold: 0.75
+  # Única área de combate onde os botões FIGHT/ITEMS/POKEMON/RUN aparecem
+  # Formato: [x1, y1, x2, y2]
+  battle_area: [685, 933, 1226, 1074]
+  # Área de busca ativa para o template talk.png (definida a partir do ROI selecionado)
+  # Formato usado abaixo: [x1, y1, x2, y2]
+  talk_search_area: [596, 292, 1263, 514]
 
 ocr:
   # Ajuste para o seu caminho real
@@ -20,7 +41,8 @@ ocr:
 
 battle:
   auto_battle: true
-  action_cooldown: 2.5
+  # Tempo mínimo entre ações de ataque; menor valor deixa o bot mais reativo
+  action_cooldown: 1.0
 
 # COORDENADAS EXATAS (Importadas do seu mapeamento)
 rois:
@@ -32,20 +54,20 @@ rois:
   player_name: [1526, 986, 1613, 1023]
   player_hp_text: [1637, 1028, 1819, 1059] # Para OCR dos números
   
-  # Botões de Ação
-  btn_fight: [849, 901, 1065, 970]
+  # Botões de Ação (coordenadas ajustadas do arquivo Tobia/settings.yaml -> action_buttons)
+  btn_fight: [871, 917, 1030, 970]
   btn_bag: [871, 984, 1030, 1039]
   btn_pokemon: [697, 983, 858, 1038]
-  btn_run: [1049, 1010, 1213, 1073]
+  btn_run: [1044, 986, 1205, 1038]
 
-  # Slots de Ataque (Texto)
+  # Slots de Ataque (Texto) (coordenadas ajustadas do arquivo Tobia/settings.yaml -> battle_moves)
   moves:
-    slot_1: [661, 781, 912, 856]
-    slot_2: [1011, 785, 1230, 846]
-    slot_3: [687, 894, 906, 960]
-    slot_4: [1010, 895, 1232, 960]
+    slot_1: [731, 827, 943, 894]
+    slot_2: [955, 827, 1167, 895]
+    slot_3: [735, 910, 944, 972]
+    slot_4: [958, 912, 1168, 973]
 
-  # HUD de Equipe (Exploração)
+  # HUD de Equipe (Exploração) (mantido, pode ser ajustado depois se necessário)
   team_hud:
-    container: [1636, 1015, 1893, 1034] # Área aproximada da lista
+    container: [1636, 1015, 1893, 1034]
     slot_height: 30
