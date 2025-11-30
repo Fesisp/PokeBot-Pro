@@ -143,7 +143,88 @@ class BotController:
         if self.debug:
             logger.debug(f"Inimigo detectado: '{enemy_name}'")
 
-        # 2. Garantir que o menu de golpes está aberto: clicar FIGHT primeiro
+        # 2. Decidir se deve fugir ANTES de abrir menu de golpes
+        my_pokemon_name = "MeuPokemonAtual"  # TODO: integrar com HUD da sua equipe
+        try:
+            if self.strategy.should_flee(my_pokemon_name, enemy_name):
+                logger.info(f"Decisão de FUGIR da batalha contra {enemy_name}.")
+                # Usa o botão RUN já configurado via ROI
+                btn_run = self.cfg.get('rois', {}).get('btn_run')
+                if btn_run and len(btn_run) == 4:
+                    x1, y1, x2, y2 = btn_run
+                    if x2 > x1 and y2 > y1:
+                        cx = x1 + (x2 - x1) // 2
+                        cy = y1 + (y2 - y1) // 2
+                    else:
+                        x, y, w, h = btn_run
+                        cx = x + w // 2
+                        cy = y + h // 2
+                    if self.debug:
+                        logger.debug(f"Clicando em RUN nas coordenadas ({cx}, {cy}) ROI={btn_run}")
+                    self.input.click(cx, cy)
+                    time.sleep(self.cfg.get('battle', {}).get('action_cooldown', 2.5))
+                    return
+                else:
+                    logger.warning("ROI de RUN (btn_run) não configurada. Não foi possível fugir.")
+        except Exception as e:
+            logger.error(f"Erro ao decidir fuga: {e}")
+
+        # 3. (opcional) Tentar trocar de Pokémon se houver alguém claramente vantajoso
+        try:
+            switch_idx = self.strategy.choose_switch_target(enemy_name)
+        except Exception as e:
+            logger.error(f"Erro ao decidir troca de Pokémon: {e}")
+            switch_idx = None
+
+        if switch_idx is not None:
+            logger.info(f"Decisão de TROCAR para o slot {switch_idx} da equipe contra {enemy_name}.")
+            try:
+                # Abre menu de POKEMON pelo botão com ROI/template existente
+                self.input.click_pokemon_button()
+                time.sleep(0.6)
+
+                # Usa menu de troca configurado em rois.switch_menu e OCR especializado
+                switch_cfg = self.cfg.get('rois', {}).get('switch_menu', {})
+                container = switch_cfg.get('container')
+                slot_h = int(switch_cfg.get('slot_height', 30))
+
+                if container and len(container) == 4:
+                    x1, y1, x2, y2 = container
+                    if x2 <= x1 or y2 <= y1:
+                        x, y, w, h = container
+                        x1, y1, x2, y2 = int(x), int(y), int(x + w), int(y + h)
+                    h_img, w_img = img.shape[:2]
+                    x1 = max(0, min(int(x1), w_img - 1))
+                    x2 = max(0, min(int(x2), w_img))
+                    y1 = max(0, min(int(y1), h_img - 1))
+                    y2 = max(0, min(int(y2), h_img))
+
+                    # OCR da lista inteira com método especializado
+                    menu_img = img[y1:y2, x1:x2]
+                    detected_names = self.ocr.ocr_party_list(menu_img)
+
+                    # Atualiza equipe atual com o que foi lido
+                    self.team_mgr.update_team_from_hud(detected_names)
+
+                    # Clica aproximadamente na linha correspondente ao índice sugerido
+                    idx = max(0, min(int(switch_idx), max(len(detected_names) - 1, 0)))
+                    cy = y1 + idx * slot_h + slot_h // 2
+                    cx = x1 + (x2 - x1) // 2
+                    if self.debug:
+                        logger.debug(f"Clicando no slot de equipe {idx} em ({cx}, {cy}) para trocar Pokémon. Nomes detectados: {detected_names}")
+                    self.input.click(cx, cy)
+
+                    # Pequena espera para animação de troca
+                    time.sleep(self.cfg.get('battle', {}).get('action_cooldown', 2.5))
+
+                    # Depois da troca, não ataca neste tick; deixa próxima iteração decidir
+                    return
+                else:
+                    logger.warning("ROI de menu de troca (switch_menu.container) não configurada; não foi possível trocar.")
+            except Exception as e:
+                logger.error(f"Erro ao executar troca de Pokémon: {e}")
+
+        # 4. Garantir que o menu de golpes está aberto: clicar FIGHT primeiro
         try:
             self.input.click_fight_button()
             if self.debug:
@@ -152,32 +233,36 @@ class BotController:
         except Exception as e:
             logger.error(f"Erro ao clicar em FIGHT: {e}")
 
-        # 3. Ler Meus Golpes (Para aprender) - texto branco nos botões
+        # 5. Ler Meus Golpes (Para aprender) - texto branco nos botões
         my_moves = []
         for i in range(1, 5):
             roi_coords = self.cfg['rois']['moves'][f'slot_{i}']
             x1, y1, x2, y2 = roi_coords
             move_img = img[y1:y2, x1:x2]
+
+            # Pré-processa texto branco em fundo dinâmico (botão de golpe)
+            processed = self.ocr.preprocess_dynamic_background_text(move_img)
+
             # Apenas letras e espaços nos nomes de golpes
             move_text_raw = self.ocr.extract_text_optimized(
-                move_img,
+                processed,
                 whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -",
-                invert_for_white_text=True
+                invert_for_white_text=False
             )
             move_text = move_text_raw.replace('\n', ' ').strip()
-            my_moves.append(move_text)
+            move_name = self.ocr.clean_move_name(move_text)
+            my_moves.append(move_name)
 
             if self.debug:
-                logger.debug(f"Slot {i}: OCR='{move_text}' ROI={roi_coords}")
+                logger.debug(f"Slot {i}: OCR_bruto='{move_text}' | nome_limpo='{move_name}' ROI={roi_coords}")
 
-        # 4. Salvar o que aprendeu (Placeholder do nome do Pokémon atual)
-        my_pokemon_name = "MeuPokemonAtual"
+        # 6. Salvar o que aprendeu (Placeholder do nome do Pokémon atual)
         try:
             self.team_mgr.save_moves(my_pokemon_name, my_moves)
         except Exception as e:
             logger.error(f"Erro ao salvar movimentos: {e}")
 
-        # 5. Decidir Ataque usando estratégia
+        # 7. Decidir Ataque usando estratégia
         try:
             best_slot = self.strategy.get_best_move(my_pokemon_name, enemy_name)
         except Exception as e:
@@ -187,7 +272,7 @@ class BotController:
         if self.debug:
             logger.debug(f"Estratégia escolheu slot {best_slot} para {my_pokemon_name} vs {enemy_name}")
 
-        # 6. Atacar clicando no slot escolhido
+        # 8. Atacar clicando no slot escolhido
         logger.info(f"Atacando slot {best_slot} contra {enemy_name} | Moves: {my_moves}")
         try:
             self.input.click_in_slot(best_slot)

@@ -47,12 +47,12 @@ battle:
 # COORDENADAS EXATAS (Importadas do seu mapeamento)
 rois:
   # HUD de Batalha
-  enemy_name: [35, 7, 110, 46]      # [x, y, w, h] ou [x1, y1, x2, y2]
-  enemy_level: [370, 13, 385, 40]
-  enemy_hp_bar: [83, 49, 383, 83]   # Para detecção de cor verde
+  enemy_name: [27, 7, 95, 25]      # [x, y, w, h] ou [x1, y1, x2, y2]
+  enemy_level: [245, 5, 277, 24]
+  enemy_hp_bar: [57, 33, 272, 58]   # Para detecção de cor verde
   
-  player_name: [1526, 986, 1613, 1023]
-  player_hp_text: [1637, 1028, 1819, 1059] # Para OCR dos números
+  player_name: [1639, 1013, 1752, 1032]
+  player_hp_text: [1740, 1048, 1822, 1062] # Para OCR dos números
   
   # Botões de Ação (coordenadas ajustadas do arquivo Tobia/settings.yaml -> action_buttons)
   btn_fight: [871, 917, 1030, 970]
@@ -67,7 +67,12 @@ rois:
     slot_3: [735, 910, 944, 972]
     slot_4: [958, 912, 1168, 973]
 
-  # HUD de Equipe (Exploração) (mantido, pode ser ajustado depois se necessário)
-  team_hud:
+  # Lista de Pokémon no menu de troca (popup "Select Pokémon")
+  switch_menu:
     container: [1636, 1015, 1893, 1034]
     slot_height: 30
+
+  # HUD de Equipe fixa na exploração (barra lateral inferior direita)
+  team_hud:
+    container: [1798, 793, 1913, 1077]
+    slot_height: 47

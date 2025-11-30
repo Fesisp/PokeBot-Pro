@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "install-and-run-pokebot",
+			"type": "shell",
+			"command": "cd \"C:\\Users\\Spinola\\OneDrive\\Laboratorio\\VSCode\\PokeBot-Pro\"; python -m pip install -r PokeBot_Pro/requirements.txt; cd \"C:\\Users\\Spinola\\OneDrive\\Laboratorio\\VSCode\\PokeBot-Pro\\PokeBot_Pro\"; python run_bot.py",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
