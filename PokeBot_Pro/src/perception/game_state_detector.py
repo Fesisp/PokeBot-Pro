@@ -97,19 +97,28 @@ class GameStateDetector:
         return False
 
     def get_battle_info(self, image):
-        """Extrai nome do inimigo e HP"""
-        enemy_name_img = self._crop_roi(image, self.rois['enemy_name'])
-        # Apenas letras, traço e espaço para nomes de Pokémon
+        """Extrai nome do inimigo, nome do player e (futuro) HP."""
+        # Nome do inimigo
+        enemy_name_img = self._crop_roi(image, self.rois.get('enemy_name'))
         enemy_name_raw = self.ocr.extract_text_optimized(
             enemy_name_img,
             whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz- ",
-            invert_for_white_text=True
+            invert_for_white_text=True,
         )
-
         enemy_name = enemy_name_raw.replace("Lv", "").strip()
-        
+
+        # Nome do Pokémon do player (HUD)
+        player_name_img = self._crop_roi(image, self.rois.get('player_name'))
+        player_name_raw = self.ocr.extract_text_optimized(
+            player_name_img,
+            whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz- ",
+            invert_for_white_text=True,
+        )
+        player_name = player_name_raw.replace("Lv", "").strip()
+
         return {
             "enemy_name": enemy_name,
+            "player_name": player_name,
             # Adicionar leitura de HP e Level aqui usando as ROIs
         }
 

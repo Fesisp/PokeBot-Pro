@@ -26,14 +26,23 @@ class OCREngine:
 
             if invert_for_white_text:
                 # Converter para HSV e pegar apenas regiões bem claras (texto branco)
-                hsv = cv2.cvtColor(img_big, cv2.COLOR_BGR2HSV)
-                lower_white = np.array([0, 0, 200])
-                upper_white = np.array([255, 60, 255])
-                mask = cv2.inRange(hsv, lower_white, upper_white)
-                ocr_img = mask
+                # img_big pode ser BGR (3 canais) ou já estar em escala de cinza (1 canal)
+                if len(img_big.shape) == 2 or img_big.shape[2] == 1:
+                    # Já é 1 canal: usa diretamente como máscara base
+                    ocr_img = img_big
+                else:
+                    hsv = cv2.cvtColor(img_big, cv2.COLOR_BGR2HSV)
+                    lower_white = np.array([0, 0, 200])
+                    upper_white = np.array([255, 60, 255])
+                    mask = cv2.inRange(hsv, lower_white, upper_white)
+                    ocr_img = mask
             else:
                 # Modo genérico: escala de cinza
-                gray = cv2.cvtColor(img_big, cv2.COLOR_BGR2GRAY)
+                if len(img_big.shape) == 2 or img_big.shape[2] == 1:
+                    gray = img_big
+                else:
+                    gray = cv2.cvtColor(img_big, cv2.COLOR_BGR2GRAY)
+
                 # Sharpen leve para destacar bordas do texto
                 kernel = np.array([[0, -1, 0],
                                    [-1, 5, -1],

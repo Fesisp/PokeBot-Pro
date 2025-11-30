@@ -136,36 +136,34 @@ class BotController:
                 logger.debug("handle_battle chamado mas estado não é IN_BATTLE. Abortando ações de ataque.")
             return
 
+        # Sempre garantir que o menu de batalha está focado em FIGHT primeiro
+        try:
+            self.input.click_fight_button()
+            if self.debug:
+                logger.debug("Clique inicial em FIGHT enviado ao entrar em handle_battle.")
+            time.sleep(self.cfg.get('battle', {}).get('fight_to_moves_delay', 1.2))
+        except Exception as e:
+            logger.error(f"Erro ao clicar no FIGHT inicial: {e}")
+
         # 1. Ler Inimigo
         battle_info = self.detector.get_battle_info(img)
         enemy_name = battle_info.get('enemy_name', '').strip()
+        my_pokemon_name = battle_info.get('player_name', '').strip() or "MeuPokemonAtual"
 
         if self.debug:
-            logger.debug(f"Inimigo detectado: '{enemy_name}'")
+            logger.debug(f"Inimigo detectado: '{enemy_name}' | Meu Pokémon: '{my_pokemon_name}'")
 
         # 2. Decidir se deve fugir ANTES de abrir menu de golpes
-        my_pokemon_name = "MeuPokemonAtual"  # TODO: integrar com HUD da sua equipe
         try:
             if self.strategy.should_flee(my_pokemon_name, enemy_name):
                 logger.info(f"Decisão de FUGIR da batalha contra {enemy_name}.")
-                # Usa o botão RUN já configurado via ROI
-                btn_run = self.cfg.get('rois', {}).get('btn_run')
-                if btn_run and len(btn_run) == 4:
-                    x1, y1, x2, y2 = btn_run
-                    if x2 > x1 and y2 > y1:
-                        cx = x1 + (x2 - x1) // 2
-                        cy = y1 + (y2 - y1) // 2
-                    else:
-                        x, y, w, h = btn_run
-                        cx = x + w // 2
-                        cy = y + h // 2
-                    if self.debug:
-                        logger.debug(f"Clicando em RUN nas coordenadas ({cx}, {cy}) ROI={btn_run}")
-                    self.input.click(cx, cy)
+                # Usa o botão RUN via template (run.png)
+                try:
+                    self.input.click_run_button()
                     time.sleep(self.cfg.get('battle', {}).get('action_cooldown', 2.5))
                     return
-                else:
-                    logger.warning("ROI de RUN (btn_run) não configurada. Não foi possível fugir.")
+                except Exception as e_click:
+                    logger.error(f"Erro ao clicar em RUN via template: {e_click}")
         except Exception as e:
             logger.error(f"Erro ao decidir fuga: {e}")
 
@@ -224,14 +222,7 @@ class BotController:
             except Exception as e:
                 logger.error(f"Erro ao executar troca de Pokémon: {e}")
 
-        # 4. Garantir que o menu de golpes está aberto: clicar FIGHT primeiro
-        try:
-            self.input.click_fight_button()
-            if self.debug:
-                logger.debug("Clique em FIGHT enviado antes de ler os golpes.")
-            time.sleep(0.6)  # pequena espera para o menu de golpes aparecer
-        except Exception as e:
-            logger.error(f"Erro ao clicar em FIGHT: {e}")
+        # 4. Neste ponto o menu de golpes já deve estar aberto pelo clique inicial em FIGHT
 
         # 5. Ler Meus Golpes (Para aprender) - texto branco nos botões
         my_moves = []
@@ -246,7 +237,7 @@ class BotController:
             # Apenas letras e espaços nos nomes de golpes
             move_text_raw = self.ocr.extract_text_optimized(
                 processed,
-                whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -",
+                whitelist="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ",
                 invert_for_white_text=False
             )
             move_text = move_text_raw.replace('\n', ' ').strip()
@@ -256,9 +247,11 @@ class BotController:
             if self.debug:
                 logger.debug(f"Slot {i}: OCR_bruto='{move_text}' | nome_limpo='{move_name}' ROI={roi_coords}")
 
-        # 6. Salvar o que aprendeu (Placeholder do nome do Pokémon atual)
+        # 6. Salvar o que aprendeu (nome real do Pokémon atual)
         try:
             self.team_mgr.save_moves(my_pokemon_name, my_moves)
+            if self.debug:
+                logger.debug(f"Golpes salvos para '{my_pokemon_name}': {my_moves}")
         except Exception as e:
             logger.error(f"Erro ao salvar movimentos: {e}")
 
@@ -279,5 +272,5 @@ class BotController:
         except Exception as e:
             logger.error(f"Erro ao clicar no slot de ataque: {e}")
 
-        # Espera animação de ataque/botões reaparecerem
-        time.sleep(self.cfg.get('battle', {}).get('action_cooldown', 2.5))
+        # Espera animação de ataque/botões reaparecerem (mais paciente)
+        time.sleep(self.cfg.get('battle', {}).get('action_cooldown', 4.0))

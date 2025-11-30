@@ -1,6 +1,8 @@
 import pyautogui
 import random
 import time
+import cv2
+import numpy as np
 
 
 class InputSimulator:
@@ -67,27 +69,41 @@ class InputSimulator:
         self.click(cx, cy)
 
     def click_fight_button(self):
-        """Clica no botão FIGHT usando uma ROI fixa (btn_fight)."""
-        btn_coords = self.rois.get('btn_fight')
-        if not btn_coords or len(btn_coords) != 4:
+        """Clica no botão FIGHT usando o template fight.png."""
+        assets_dir = self.cfg.get('assets', {}).get('templates_dir', '')
+        fight_img_name = self.cfg.get('assets', {}).get('fight_image', 'fight.png')
+        template_path = assets_dir + fight_img_name
+
+        template = cv2.imread(template_path)
+        if template is None:
             return
 
-        x1, y1, x2, y2 = btn_coords
-        # Aceita [x1,y1,x2,y2] ou [x,y,w,h]
-        if x2 <= x1 or y2 <= y1:
-            x, y, w, h = btn_coords
-            x1, y1, x2, y2 = int(x), int(y), int(x + w), int(y + h)
+        # Captura uma screenshot da tela inteira
+        screenshot = pyautogui.screenshot()
+        screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
 
-        margin_x = int(0.2 * (x2 - x1))
-        margin_y = int(0.2 * (y2 - y1))
-        safe_x1 = x1 + margin_x
-        safe_x2 = x2 - margin_x
-        safe_y1 = y1 + margin_y
-        safe_y2 = y2 - margin_y
+        res = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
+        _, max_val, _, max_loc = cv2.minMaxLoc(res)
+
+        # Threshold conservador para evitar falsos positivos
+        thresh = float(self.cfg.get('detection', {}).get('fight_threshold', 0.85))
+        if max_val < thresh:
+            return
+
+        h, w = template.shape[:2]
+        x, y = max_loc
+
+        # Margem interna de 20% para clicar seguro dentro do botão
+        margin_x = int(0.2 * w)
+        margin_y = int(0.2 * h)
+        safe_x1 = x + margin_x
+        safe_x2 = x + w - margin_x
+        safe_y1 = y + margin_y
+        safe_y2 = y + h - margin_y
 
         if safe_x2 <= safe_x1 or safe_y2 <= safe_y1:
-            cx = x1 + (x2 - x1) // 2
-            cy = y1 + (y2 - y1) // 2
+            cx = x + w // 2
+            cy = y + h // 2
         else:
             cx = random.randint(safe_x1, safe_x2)
             cy = random.randint(safe_y1, safe_y2)
@@ -95,27 +111,77 @@ class InputSimulator:
         self.click(cx, cy)
 
     def click_pokemon_button(self):
-        """Clica no botão POKEMON usando uma ROI fixa (btn_pokemon)."""
-        btn_coords = self.rois.get('btn_pokemon')
-        if not btn_coords or len(btn_coords) != 4:
+        """Clica no botão POKEMON usando o template pokemon.png."""
+        assets_dir = self.cfg.get('assets', {}).get('templates_dir', '')
+        poke_img_name = self.cfg.get('assets', {}).get('pokemon_image', 'pokemon.png')
+        template_path = assets_dir + poke_img_name
+
+        template = cv2.imread(template_path)
+        if template is None:
             return
 
-        x1, y1, x2, y2 = btn_coords
-        # Aceita [x1,y1,x2,y2] ou [x,y,w,h]
-        if x2 <= x1 or y2 <= y1:
-            x, y, w, h = btn_coords
-            x1, y1, x2, y2 = int(x), int(y), int(x + w), int(y + h)
+        screenshot = pyautogui.screenshot()
+        screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
 
-        margin_x = int(0.2 * (x2 - x1))
-        margin_y = int(0.2 * (y2 - y1))
-        safe_x1 = x1 + margin_x
-        safe_x2 = x2 - margin_x
-        safe_y1 = y1 + margin_y
-        safe_y2 = y2 - margin_y
+        res = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
+        _, max_val, _, max_loc = cv2.minMaxLoc(res)
+
+        thresh = float(self.cfg.get('detection', {}).get('pokemon_threshold', 0.85))
+        if max_val < thresh:
+            return
+
+        h, w = template.shape[:2]
+        x, y = max_loc
+
+        margin_x = int(0.2 * w)
+        margin_y = int(0.2 * h)
+        safe_x1 = x + margin_x
+        safe_x2 = x + w - margin_x
+        safe_y1 = y + margin_y
+        safe_y2 = y + h - margin_y
 
         if safe_x2 <= safe_x1 or safe_y2 <= safe_y1:
-            cx = x1 + (x2 - x1) // 2
-            cy = y1 + (y2 - y1) // 2
+            cx = x + w // 2
+            cy = y + h // 2
+        else:
+            cx = random.randint(safe_x1, safe_x2)
+            cy = random.randint(safe_y1, safe_y2)
+
+        self.click(cx, cy)
+
+    def click_run_button(self):
+        """Clica no botão RUN usando o template run.png."""
+        assets_dir = self.cfg.get('assets', {}).get('templates_dir', '')
+        run_img_name = self.cfg.get('assets', {}).get('run_image', 'run.png')
+        template_path = assets_dir + run_img_name
+
+        template = cv2.imread(template_path)
+        if template is None:
+            return
+
+        screenshot = pyautogui.screenshot()
+        screenshot = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+
+        res = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
+        _, max_val, _, max_loc = cv2.minMaxLoc(res)
+
+        thresh = float(self.cfg.get('detection', {}).get('run_threshold', 0.85))
+        if max_val < thresh:
+            return
+
+        h, w = template.shape[:2]
+        x, y = max_loc
+
+        margin_x = int(0.2 * w)
+        margin_y = int(0.2 * h)
+        safe_x1 = x + margin_x
+        safe_x2 = x + w - margin_x
+        safe_y1 = y + margin_y
+        safe_y2 = y + h - margin_y
+
+        if safe_x2 <= safe_x1 or safe_y2 <= safe_y1:
+            cx = x + w // 2
+            cy = y + h // 2
         else:
             cx = random.randint(safe_x1, safe_x2)
             cy = random.randint(safe_y1, safe_y2)
