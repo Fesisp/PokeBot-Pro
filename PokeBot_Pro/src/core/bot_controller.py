@@ -1,6 +1,8 @@
 import time
 import cv2
 import winsound
+from pathlib import Path
+import ctypes
 from loguru import logger
 from ..perception.game_state_detector import GameState
 
@@ -39,10 +41,24 @@ class BotController:
 
     def handle_shiny(self):
         logger.critical("SHINY ENCONTRADO! ALARME!")
-        # Toca um alarme contínuo por alguns ciclos e para o bot completamente
+
+        # 1) Toca o alarme padrão do PC (beep) algumas vezes
         for _ in range(10):
-            winsound.Beep(1000, 500)
+            winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
             time.sleep(0.5)
+
+        # 2) Notificação visual simples via MessageBox do Windows
+        try:
+            ctypes.windll.user32.MessageBoxW(
+                0,
+                "Um SHINY foi detectado pelo PokeBot Pro!",
+                "PokeBot Pro - SHINY ENCONTRADO",
+                0x00000040,  # MB_ICONINFORMATION
+            )
+        except Exception as e:
+            logger.error(f"Falha ao exibir MessageBox de shiny: {e}")
+
+        # Após alertar, para o bot completamente
         self.running = False
 
     def handle_exploring(self, img):
@@ -147,6 +163,10 @@ class BotController:
         except Exception as e:
             logger.error(f"Erro ao clicar no FIGHT inicial: {e}")
 
+        # Após o clique em FIGHT e o pequeno delay, captura um novo frame
+        # para garantir que o menu de golpes já esteja completamente renderizado.
+        img = self.cap.capture()
+
         # 1. Ler Inimigo
         battle_info = self.detector.get_battle_info(img)
         enemy_name = battle_info.get('enemy_name', '').strip()
@@ -232,6 +252,16 @@ class BotController:
             roi_coords = self.cfg['rois']['moves'][f'slot_{i}']
             x1, y1, x2, y2 = roi_coords
             move_img = img[y1:y2, x1:x2]
+
+            # Em modo debug, salva a ROI do botão de golpe em disco para calibração manual
+            if self.debug:
+                try:
+                    debug_dir = Path("debug") / "moves"
+                    debug_dir.mkdir(parents=True, exist_ok=True)
+                    debug_path = debug_dir / f"{my_pokemon_name.lower()}_slot{i}.png"
+                    cv2.imwrite(str(debug_path), move_img)
+                except Exception as e:
+                    logger.error(f"Erro ao salvar imagem de debug do slot {i}: {e}")
 
             # Pré-processa texto branco em fundo dinâmico (botão de golpe)
             if self.img_proc is not None:

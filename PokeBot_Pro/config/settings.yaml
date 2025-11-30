@@ -62,10 +62,10 @@ rois:
 
   # Slots de Ataque (Texto) (coordenadas ajustadas do arquivo Tobia/settings.yaml -> battle_moves)
   moves:
-    slot_1: [747, 866, 927, 910]
-    slot_2: [991, 870, 1160, 910]
-    slot_3: [755, 953, 924, 994]
-    slot_4: [998, 949, 1161, 993]
+    slot_1: [749, 869, 945, 889]
+    slot_2: [971, 868, 1166, 890]
+    slot_3: [749, 948, 928, 971]
+    slot_4: [996, 945, 1167, 973]
 
   # Lista de Pokémon no menu de troca (popup "Select Pokémon")
   switch_menu:

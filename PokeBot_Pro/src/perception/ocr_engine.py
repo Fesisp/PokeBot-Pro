@@ -4,6 +4,7 @@ import pytesseract
 from loguru import logger
 import re
 import os
+from difflib import get_close_matches
 
 
 class OCREngine:
@@ -121,18 +122,52 @@ class OCREngine:
         return final_img
 
     def clean_move_name(self, text: str) -> str:
-        """Remove PP e lixo do texto do golpe (ex: 'Ember 23/25' -> 'Ember')."""
+        """Normaliza o nome do golpe extraído pelo OCR.
+
+        - Remove PP e lixo do texto do golpe (ex: 'Ember 23/25' -> 'Ember').
+        - Aplica uma correção leve usando similaridade com golpes conhecidos
+          para corrigir erros comuns de OCR (ex: 'SanadAttack' -> 'Sand Attack').
+        """
         if not text:
             return ""
-        # Pega apenas letras e espaços do início, ignorando números e '/'
+
+        # Pega apenas letras, espaços e hífen do início, ignorando números e '/'
         match = re.match(r"([a-zA-Z\s\-]+)", text)
-        if match:
-            clean = match.group(1).strip()
-            # Filtro de ruído: nomes muito curtos tendem a ser erro de OCR (ex: 'ee')
-            if len(clean) < 3:
-                return ""
-            return clean
-        return ""
+        if not match:
+            return ""
+
+        clean = match.group(1).strip()
+        if len(clean) < 3:
+            return ""
+
+        # Correção de similaridade com base na lista de golpes conhecidos
+        # Carrega moves conhecidos de data/known_moves.json, se existir
+        try:
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+            known_path = os.path.join(base_dir, "data", "known_moves.json")
+            if os.path.exists(known_path):
+                import json
+
+                with open(known_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+
+                # Extrai todos os nomes únicos de golpes
+                known_moves = set()
+                for moves in data.values():
+                    if isinstance(moves, list):
+                        for m in moves:
+                            if isinstance(m, str) and m:
+                                known_moves.add(m)
+
+                if known_moves:
+                    # Tenta casar o texto limpo com algum golpe conhecido
+                    candidates = get_close_matches(clean, list(known_moves), n=1, cutoff=0.8)
+                    if candidates:
+                        return candidates[0]
+        except Exception as e:
+            logger.error(f"Erro ao tentar corrigir nome de golpe via similaridade: {e}")
+
+        return clean
 
     def ocr_party_list(self, image_roi):
         """OCR especializado para listas de equipe (texto branco em fundo escuro).
