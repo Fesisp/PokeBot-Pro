@@ -13,6 +13,8 @@ class BotController:
         self.strategy = components['strategy']
         self.ocr = components['ocr']
         self.team_mgr = components['team_mgr']
+        # Novo: processador de imagem para texto branco em fundo colorido
+        self.img_proc = components.get('processor')
         
         self.running = True
         self.debug = bool(self.cfg.get('bot', {}).get('debug_mode', False))
@@ -232,7 +234,10 @@ class BotController:
             move_img = img[y1:y2, x1:x2]
 
             # Pré-processa texto branco em fundo dinâmico (botão de golpe)
-            processed = self.ocr.preprocess_dynamic_background_text(move_img)
+            if self.img_proc is not None:
+                processed = self.img_proc.process_dynamic_background_text(move_img)
+            else:
+                processed = self.ocr.preprocess_dynamic_background_text(move_img)
 
             # Apenas letras e espaços nos nomes de golpes
             move_text_raw = self.ocr.extract_text_optimized(

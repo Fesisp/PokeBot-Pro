@@ -3,10 +3,13 @@ import numpy as np
 import pytesseract
 from loguru import logger
 import re
+import os
 
 
 class OCREngine:
     def __init__(self, tesseract_path):
+        if not os.path.exists(tesseract_path):
+            logger.error(f"Tesseract não encontrado em: {tesseract_path}")
         pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
     def extract_text_optimized(self, image, whitelist=None, invert_for_white_text=False):
@@ -68,6 +71,25 @@ class OCREngine:
             logger.error(f"Erro no OCR Otimizado: {e}")
             return ""
 
+    def read_text(self, processed_image, mode: str = "line") -> str:
+        """Lê texto de uma imagem já pré-processada.
+
+        mode="line": nomes (Charmeleon, Caterpie)
+        mode="block": textos em duas linhas (golpes com PP, etc.)
+        """
+        try:
+            psm = 7 if mode == "line" else 6
+            config = (
+                f"--oem 1 --psm {psm} "
+                "-c tessedit_char_whitelist="
+                "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789- "
+            )
+            text = pytesseract.image_to_string(processed_image, config=config)
+            return text.strip()
+        except Exception as e:
+            logger.error(f"Erro no OCR (read_text): {e}")
+            return ""
+
     def preprocess_dynamic_background_text(self, image):
         """Prepara texto branco sobre fundo colorido/dinâmico (HUD de batalha, moves)."""
         if image is None or image.size == 0:
@@ -102,11 +124,15 @@ class OCREngine:
         """Remove PP e lixo do texto do golpe (ex: 'Ember 23/25' -> 'Ember')."""
         if not text:
             return ""
-        # Pega apenas letras e espaços iniciais antes de números/PP
-        match = re.match(r"([A-Za-z\s-]+)", text)
+        # Pega apenas letras e espaços do início, ignorando números e '/'
+        match = re.match(r"([a-zA-Z\s\-]+)", text)
         if match:
-            return match.group(1).strip()
-        return text.strip()
+            clean = match.group(1).strip()
+            # Filtro de ruído: nomes muito curtos tendem a ser erro de OCR (ex: 'ee')
+            if len(clean) < 3:
+                return ""
+            return clean
+        return ""
 
     def ocr_party_list(self, image_roi):
         """OCR especializado para listas de equipe (texto branco em fundo escuro).
